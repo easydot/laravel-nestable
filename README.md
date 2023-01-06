@@ -10,7 +10,7 @@ Install
 ---
 
 ```ssh
-composer require dcblogdev/laravel-nestable
+composer require easydot/laravel-nestable
 ```
 
 Then

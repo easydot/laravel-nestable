@@ -1,18 +1,11 @@
 {
-    "name": "dcblogdev/laravel-nestable",
+    "name": "easydot/laravel-nestable",
     "type": "library",
-    "description": "Laravel 5 nested categories library",
-    "homepage": "https://github.com/dcblogdev/laravel-nestable",
+    "description": "Laravel 9 nested categories library",
+    "homepage": "https://github.com/easydot/laravel-nestable",
     "keywords": ["nested","nestable","nestedset","category","laravel"],
     "license": "MIT",
-    "authors": [
-        {
-            "name": "Ahmet ATAY",
-            "email": "ahmet.atay@hotmail.com",
-            "homepage": "http://www.atayahmet.com",
-            "role": "Developer"
-        }
-    ],
+
     "require": {
         "php": ">=5.5.5",
         "illuminate/support": "5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*|5.8.*|6.*|7.*|8.*|9.*",
