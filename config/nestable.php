@@ -8,7 +8,7 @@ return [
     'body' => [
         'id',
         'name',
-        'slug',
+        'url',
     ],
     'html' => [
         'label' => 'name',

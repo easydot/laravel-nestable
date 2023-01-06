@@ -183,6 +183,10 @@ class NestableService
             if (intval($item[$this->parent]) == intval($args['parent'])) {
                 // fill the array with the body fields
                 foreach ($this->config['body'] as $field) {
+                    if ($field == 'url') {
+                        $url = \App\Models\Url::where('urlable_type', 'App\Models\Category')->where('urlable_id', $item['id'])->first();
+                        $item['url'] = $url ? $url->toArray() : null;
+                    }
                     $currentData->put($field, isset($item[$field]) ? $item[$field] : null);
                 }
 
