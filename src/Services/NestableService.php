@@ -183,11 +183,7 @@ class NestableService
             if (intval($item[$this->parent]) == intval($args['parent'])) {
                 // fill the array with the body fields
                 foreach ($this->config['body'] as $field) {
-                    if ($field == 'url') {
-                        $url = \App\Models\Url::where('urlable_type', 'App\Models\Category')->where('urlable_id', $item['id'])->first();
-                        $item['url'] = $url ? $url->toArray() : null;
-                    }
-                    $currentData->put($field, isset($item[$field]) ? $item[$field] : null);
+                    $currentData->put($field, isset($item[$field]) ? $item[$field] : $this->getRelatedField($field, $item['id']));
                 }
 
                 // Get the child node name
@@ -211,6 +207,27 @@ class NestableService
         });
 
         return $tree->toArray();
+    }
+
+    protected function getRelatedField($field, $id)
+    {
+        switch($field) {
+            case 'url' : {
+                $url = \App\Models\Url::where('urlable_type', 'App\Models\Category')->where('urlable_id', $id)->first();
+                $data = $url ? $url->toArray() : null;
+                break;
+            }
+            case 'images' : {
+                $images = \App\Models\Image::where('model_type', 'App\Models\Category')->where('model_id', $id)->orderBy('is_default', 'desc')->get();
+                $data = $images ? $images->toArray() : null;
+                break;
+            }
+            default :
+                $data = null;
+                break;
+        }
+
+        return $data;
     }
 
     /**
