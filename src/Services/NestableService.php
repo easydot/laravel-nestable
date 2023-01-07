@@ -113,12 +113,32 @@ class NestableService
     protected $customUrl;
 
     /**
+     *  Set the active category for matching in li
+     * @var id
+     */
+    protected $category;
+
+    /**
+     * Enable jsTree.
+     *
+     * @var mixed
+     */
+    protected $jstree = false;
+
+    /**
+     * Set parent categories for a category
+     * @var array
+     */
+    protected $parent_categories = [];
+
+    /**
      * Set the data to wrap class.
      *
      * @param mixed $data
      *
      * @return object (instance)
      */
+
     public function make($data)
     {
         if ($data instanceof Collection) {
@@ -148,17 +168,20 @@ class NestableService
         if (count($args) < 1) {
             return [
                 'parent' => $this->parents ? current($this->parents) : 0,
+                'active' => $this->active ? $this->active : 0,
                 'data' => $this->data,
             ];
         } elseif (count($args) == 1) {
             return [
                 'parent' => reset($args),
+                'active' => $this->active ? $this->active : 0,
                 'data' => $this->data,
             ];
         } else {
             return [
                 'data' => reset($args),
                 'parent' => next($args),
+                'active' => $this->active ? $this->active : 0,
             ];
         }
     }
@@ -263,6 +286,9 @@ class NestableService
     public function renderAsHtml($data = false, $parent = 0, $first = true)
     {
         $args = $this->setParameters(func_get_args());
+        if ($this->jstree) {
+            $this->parent_categories = $this->getParentCategories($this->category->id);
+        }
 
         // open the ul tag if function is first run
         $tree = $first ? $this->ul(null, $parent, true) : '';
@@ -272,7 +298,8 @@ class NestableService
             $childItems = '';
 
             if (intval($child_item[$this->parent]) == intval($args['parent'])) {
-                $path = $child_item[$this->config['html']['href']];
+                $url = $this->getRelatedField($this->config['html']['href'], $child_item['id']);
+                $path = $url['rewrite'];
                 $label = $child_item[$this->config['html']['label']];
 
                 // find parent element
@@ -285,9 +312,10 @@ class NestableService
 
                 // Check the active item
                 $activeItem = $this->doActive($path, $label);
+                $activeItem = 'category_id="'. $child_item['id'] .'"';
 
                 // open the li tag
-                $childItems .= $this->openLi($currentData, $activeItem);
+                $childItems .= $this->openLi($currentData, $activeItem, $child_item['id']);
                 // Get the primary key name
                 $item_id = $child_item[$this->config['primary_key']];
 
@@ -315,6 +343,18 @@ class NestableService
         $tree = $first ? $this->closeUl($tree) : $tree;
 
         return $tree;
+    }
+
+    protected function getParentCategories($id, $categories = [])
+    {
+        $category = \App\Models\Category::find($id);
+        array_push($categories, $category->id);
+        if ($category->parentcategory) {
+            $subcategory = $this->getParentCategories($category->parent_id, $categories);
+            return $subcategory;
+        }
+
+        return $categories;
     }
 
     /**
@@ -514,6 +554,40 @@ class NestableService
     }
 
     /**
+     * Attribute insert helper for html render.
+     *
+     * @return object (instance)
+     */
+    public function jstree()
+    {
+        $args = func_get_args();
+        $this->jstree = true;
+
+        if (func_num_args() > 1) {
+            $this->jstree = true;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the active category
+     *
+     * @return collection (instance)
+     */
+    public function category()
+    {
+        $args = func_get_args();
+        $this->category = current($args);
+
+        if (func_num_args() > 1) {
+            $this->category = current($args);
+        }
+
+        return $this;
+    }
+
+    /**
      * Insert all saved attributes to <li> element.
      *
      * @param array  $href
@@ -587,6 +661,7 @@ class NestableService
 
         return $this;
     }
+
 
     /**
      * Set the as selected of items.
@@ -836,9 +911,21 @@ class NestableService
      *
      * @return string
      */
-    public function openLi(array $li, $extra = '')
+    public function openLi(array $li, $extra = '', $current_id)
     {
-        return "\n".'<li '.$extra.'><a href="'.$li['href'].'">'.$li['label'].'</a>';
+        $html =  "\n".'<li ';
+        $html .= $extra;
+
+        if ($this->jstree) {
+            $html .= " data-jstree='{ ";
+            $html .= in_array($current_id, $this->parent_categories) ? '"opened" : true,' : '';
+            $html .= $current_id == $this->category?->parent_id ? '"selected" : true' : '';
+            $html .= $current_id == $this->category?->id ? '"disabled" : true' : '';
+            $html .= "}' ";
+        }
+
+        $html .= '><a href="'.$li['href'].'">'.$li['label'].'</a>';
+        return $html;
     }
 
     /**
