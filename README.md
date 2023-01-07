@@ -210,14 +210,16 @@ name                  | paremeter| description
 
 renderAsHtml()
 ---
-name                  | paremeter         | description                      
-----------------------| ----------------- | --------------------------------
-[parent()](#parent)   | int               | Get childs of the defined parent
-[active()](#active)   | callback/array/int| Selected item(s) for html output
-[ulAttr()](#ulAttr)   | array/string      | Add attribute to parent ul element
-[firstUlAttr()](#firstUlAttr)   | array/string      | Add attribute to parent ul element
-[route()](#route)     | callback/array    | Generate url by route name
-[customUrl()](#custom-url)     | string    | Generate custom url 
+name                  | paremeter     | description                      
+----------------------|---------------| --------------------------------
+[parent()](#parent)   | int           | Get childs of the defined parent
+[active()](#active)   | callback/array/int | Selected item(s) for html output
+[ulAttr()](#ulAttr)   | array/string  | Add attribute to parent ul element
+[firstUlAttr()](#firstUlAttr)   | array/string  | Add attribute to parent ul element
+[route()](#route)     | callback/array | Generate url by route name
+[customUrl()](#custom-url)     | string        | Generate custom url
+[category()](#custom-url)     | category      | Set current category
+[jstree()](#custom-url)     |            | Activates jsTree MUST set category()
 
 renderAsDropdown()/renderAsMultiple()
 ---
