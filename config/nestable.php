@@ -18,5 +18,14 @@ return [
         'prefix' => '',
         'label' => 'name',
         'value' => 'id'
+    ],
+    'menu' => [
+        'label' => 'title',
+        'href' => 'url',
+        'classes' => [
+            'ul' => 'sidebar-nav',
+            'li' => 'sidebar-item',
+            'link' => 'sidebar-link',
+        ]
     ]
 ];

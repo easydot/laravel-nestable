@@ -132,6 +132,12 @@ class NestableService
     protected $parent_categories = [];
 
     /**
+     * Set menu is for admin
+     * @var mixed
+     */
+    protected $is_admin = false;
+
+    /**
      * Set the data to wrap class.
      *
      * @param mixed $data
@@ -299,8 +305,8 @@ class NestableService
 
             if (intval($child_item[$this->parent]) == intval($args['parent'])) {
                 $url = $this->getRelatedField($this->config['html']['href'], $child_item['id']);
-                $path = $url['rewrite'];
-                $label = $child_item[$this->config['html']['label']];
+                $path = $url['rewrite'] ?? '';
+                $label = $child_item[$this->config['html']['label']] ?? $child_item['title'];
 
                 // find parent element
                 $parentNode = $args['data']->where('id', (int)$child_item[$this->config['parent']])->first();
@@ -311,7 +317,7 @@ class NestableService
                 ];
 
                 // Check the active item
-                $activeItem = $this->doActive($path, $label);
+                $activeItem = 'class="' . $this->doActive($path, $label) . '"';
                 $activeItem = 'category_id="'. $child_item['id'] .'"';
 
                 // open the li tag
@@ -326,6 +332,88 @@ class NestableService
                     $html = $this->renderAsHtml($args['data'], $item_id, false);
 
                     if (!empty($html)) {
+                        $childItems .= $this->ul($html, $item_id);
+                    }
+                }
+
+                // close the li tag
+                $childItems = $this->closeLi($childItems);
+            }
+
+            // current data contact to the parent variable
+            $tree = $tree.$childItems;
+
+        });
+
+        // close the ul tag
+        $tree = $first ? $this->closeUl($tree) : $tree;
+
+        return $tree;
+    }
+
+    public function isAdmin($state = false)
+    {
+        $this->is_admin = $state;
+        return $this;
+    }
+
+    /**
+     * Pass to html (ul:li) as nesting.
+     *
+     * @param object $data   Illuminate\Support\Collection
+     * @param int    $parent Current parent id
+     * @param bool   $first  First run
+     *
+     * @return string
+     */
+    public function renderAsMenu($data = false, $parent = 0, $first = true)
+    {
+        $args = $this->setParameters(func_get_args());
+        if ($this->jstree) {
+            $this->parent_categories = $this->getParentCategories($this->category->id);
+        }
+
+        // open the ul tag if function is first run
+        $tree = $first ? $this->ul(null, $parent, true) : '';
+
+        $args['data']->each(function ($child_item) use (&$tree, $args) {
+
+            $childItems = '';
+
+            if (intval($child_item[$this->parent]) == intval($args['parent']) && $child_item->hide == 0) {
+                // Get the primary key name
+                $item_id = $child_item[$this->config['primary_key']];
+                $hasChild = $this->hasChild($this->parent, $item_id, $args['data']);
+
+                $path = $child_item['path'];
+                $label = $child_item[$this->config['html']['label']] ?? $child_item['title'];
+
+                // find parent element
+                $parentNode = $args['data']->where('id', (int)$child_item[$this->config['parent']])->first();
+
+                $currentData = [
+                    'label' => $label,
+                    'href' => (is_null($child_item['url']) && is_null($child_item['path'])) ? null : $this->url($path, $label, $parentNode),
+                    'icon' => $child_item['icon'],
+                    'id' => $child_item['id'],
+                ];
+
+                // Check the active item
+                $classes = $this->doActive($path, $label) . ' ';
+                $classes .= implode(' ', $child_item['classes']);
+
+                $extra = ['class' => $classes];
+                // open the li tag
+                $childItems .= $this->openLi($currentData, $extra, $child_item['id'], $hasChild);
+
+
+                // check the child element
+                if ($hasChild) {
+                    // function call again for child elements
+                    $html = $this->renderAsMenu($args['data'], $item_id, false);
+
+                    if (!empty($html)) {
+                        $this->optionUlAttr = ['class' => "sidebar-dropdown list-unstyled collapse collapse", "id" => 'menu_' . $item_id];
                         $childItems .= $this->ul($html, $item_id);
                     }
                 }
@@ -492,7 +580,7 @@ class NestableService
         $data->each(function ($item) use (&$child, $key, $value) {
 
             if (intval($item[$key]) == intval($value) && !$child) {
-                $child = true;
+                $child = !(bool) $item->hide;//true;
             }
 
         });
@@ -597,6 +685,12 @@ class NestableService
      */
     protected function doActive($href, $label)
     {
+        if (!is_null($href)) {
+            $current = request()->segment(2);
+            if (($current == null && $href == '/') || $current == $href) {
+                return 'active';
+            }
+        }
         if (is_array($this->active) && array_key_exists('callback', $this->active)) {
             $this->active = $this->active['callback'];
         }
@@ -609,7 +703,7 @@ class NestableService
                 if ($result !== false) {
                     unset($this->active[$result]);
 
-                    return 'class="active"';
+                    return 'active';
                 }
             }
 
@@ -624,7 +718,7 @@ class NestableService
                 if ($this->active == $href) {
                     $this->active = null;
 
-                    return 'class="active"';
+                    return 'active';
                 }
             }
         }
@@ -812,7 +906,8 @@ class NestableService
      */
     protected function url($path, $label, $parent = null)
     {
-        if ($this->config['generate_url']) {
+        $path = $this->is_admin ? 'admin/' . $path : $path;
+        if ($this->config['generate_url'] && !is_null($path)) {
             if ($this->route) {
                 if (array_has($this->route, 'callback')) {
                     if(is_array($parent)) $parent = (object)$parent;
@@ -824,11 +919,10 @@ class NestableService
                     return URL::route($name, [$param => $path]);
                 }
             }
-
             return URL::to($path);
         }
 
-        return '/'.$path;
+        return $path;
     }
 
     /**
@@ -877,7 +971,9 @@ class NestableService
     public function ul($items = false, $parent_id = 0, $first = false)
     {
         $attrs = '';
-
+        if ($parent_id == 3) {
+//            dd($this->optionUlAttr);
+        }
         if (! $first && is_array($this->optionUlAttr) && count($this->optionUlAttr) > 0) {
             $attrs = $this->renderAttr($this->optionUlAttr, $parent_id);
         }
@@ -904,6 +1000,21 @@ class NestableService
         return $ul.'</ul>'."\n";
     }
 
+    protected function convertExtraAttrs($extra)
+    {
+        $output = $extra;
+        if (is_array($extra)) {
+            $output = implode(', ', array_map(
+                function ($v, $k) {
+                    return sprintf("%s=\"%s\"", $k, $v);
+                },
+                $extra,
+                array_keys($extra)
+            ));
+        }
+        return $output;
+    }
+
     /**
      * Generate open li tag.
      *
@@ -911,8 +1022,9 @@ class NestableService
      *
      * @return string
      */
-    public function openLi(array $li, $extra = '', $current_id)
+    public function openLi(array $li, $extra = '', $current_id, $hasChild = false)
     {
+        $extra = $this->convertExtraAttrs($extra);
         $html =  "\n".'<li ';
         $html .= $extra;
 
@@ -924,7 +1036,17 @@ class NestableService
             $html .= "}' ";
         }
 
-        $html .= '><a href="'.$li['href'].'">'.$li['label'].'</a>';
+        $html .= '>';
+        if (!is_null($li['href'])) {
+            $child_extra = $hasChild ? 'data-bs-target="#menu_'. $li['id'] .'" data-bs-toggle="collapse" aria-expanded="false"' : '';
+            $child_class = $hasChild ? ' collapsed' : '';
+
+            $html .= '<a href="' . $li['href'] . '" class="' . $this->config['menu']['classes']['link'] . $child_class . '" '. $child_extra .'>' . $li['icon'];
+            $html .= '<span class="align-middle">'. $li['label'] .'</span>';
+            $html .= '</a>';
+        } else {
+            $html .= $li['label'];
+        }
         return $html;
     }
 
