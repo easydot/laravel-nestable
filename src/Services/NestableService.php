@@ -399,8 +399,11 @@ class NestableService
                 ];
 
                 // Check the active item
-                $classes = $this->doActive($path, $label) . ' ';
-                $classes .= implode(' ', $child_item['classes']);
+                $isActive = $this->doActive($path, $label);
+                $isSubActive = $hasChild ? $this->isSubActive($path) : false;
+                $classes = $isActive . ' ';
+                $classes .= $isSubActive ? ' active ' : '';
+                $classes .=  implode(' ', $child_item['classes']);
 
                 $extra = ['class' => $classes];
                 // open the li tag
@@ -413,7 +416,13 @@ class NestableService
                     $html = $this->renderAsMenu($args['data'], $item_id, false);
 
                     if (!empty($html)) {
-                        $this->optionUlAttr = ['class' => "sidebar-dropdown list-unstyled collapse collapse", "id" => 'menu_' . $item_id];
+                        if (!$isActive && !is_null($path)) {
+                            $segments = request()->segments();
+                            if (in_array($path, $segments)) {
+                                $isActive = true;
+                            }
+                        }
+                        $this->optionUlAttr = ['class' => 'sidebar-dropdown list-unstyled ' . ($isActive ? 'show' : 'collapse'), "id" => 'menu_' . $item_id];
                         $childItems .= $this->ul($html, $item_id);
                     }
                 }
@@ -686,8 +695,18 @@ class NestableService
     protected function doActive($href, $label)
     {
         if (!is_null($href)) {
-            $current = request()->segment(2);
-            if (($current == null && $href == '/') || $current == $href) {
+            $segments = request()->segments();
+            foreach ($segments as $key => $value) {
+                if ($key == 0) {
+                    unset($segments[$key]);
+                }
+                if (is_numeric($value)) {
+                    $segments[$key] = '*';
+                }
+            }
+            $scope = implode('/', $segments);
+
+            if (($scope == null && $href == '/') || $scope == $href) {
                 return 'active';
             }
         }
@@ -722,6 +741,12 @@ class NestableService
                 }
             }
         }
+    }
+
+    protected function isSubActive($path)
+    {
+        $segments = request()->segments();
+        return (in_array($path, $segments)) ? true : false;
     }
 
     /**
@@ -971,9 +996,7 @@ class NestableService
     public function ul($items = false, $parent_id = 0, $first = false)
     {
         $attrs = '';
-        if ($parent_id == 3) {
-//            dd($this->optionUlAttr);
-        }
+
         if (! $first && is_array($this->optionUlAttr) && count($this->optionUlAttr) > 0) {
             $attrs = $this->renderAttr($this->optionUlAttr, $parent_id);
         }
