@@ -23,9 +23,9 @@ return [
         'label' => 'title',
         'href' => 'url',
         'classes' => [
-            'ul' => 'sidebar-nav',
-            'li' => 'sidebar-item',
-            'link' => 'sidebar-link',
+            'ul' => 'nav flex-column',
+            'li' => 'nav-item',
+            'link' => 'nav-link',
         ]
     ]
 ];

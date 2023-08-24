@@ -399,15 +399,22 @@ class NestableService
                 ];
 
                 // Check the active item
-                $isActive = $this->doActive($path, $label);
                 $isSubActive = $hasChild ? $this->isSubActive($path) : false;
-                $classes = $isActive . ' ';
-                $classes .= $isSubActive ? ' active ' : '';
-                $classes .=  implode(' ', $child_item['classes']);
+                $isActive = $isSubActive ? true : (bool) $this->doActive($path, $label);
+                $classes = [];
+                array_push($classes, $this->config['menu']['classes']['li']);
+                if (is_array($child_item['classes'])) {
+                    array_push($classes, $child_item['classes']);
+                }
+//                array_push($classes, $isActive);
+                if ($hasChild) {
+                    array_push($classes, 'dropdown');
+                }
 
-                $extra = ['class' => $classes];
+
+                $extra = ['class' => implode(' ', $classes)];
                 // open the li tag
-                $childItems .= $this->openLi($currentData, $extra, $child_item['id'], $hasChild);
+                $childItems .= $this->openLi($currentData, $extra, $child_item['id'], $hasChild, $isActive);
 
 
                 // check the child element
@@ -422,7 +429,7 @@ class NestableService
                                 $isActive = true;
                             }
                         }
-                        $this->optionUlAttr = ['class' => 'sidebar-dropdown list-unstyled ' . ($isActive ? 'show' : 'collapse'), "id" => 'menu_' . $item_id];
+                        $this->optionUlAttr = ['class' => 'collapse ' . ($isActive ? 'show' : ''), "id" => 'menu_' . $item_id];
                         $childItems .= $this->ul($html, $item_id);
                     }
                 }
@@ -1008,7 +1015,7 @@ class NestableService
             return "\n".'<ul'.$attrs.'>'."\n";
         }
 
-        return '<ul'.$attrs.'>'."\n".$items."\n".'</ul>';
+        return '<div'.$attrs.'><ul class="'. $this->config['menu']['classes']['ul'] .'">'."\n".$items."\n".'</ul></div>';
     }
 
     /**
@@ -1045,7 +1052,7 @@ class NestableService
      *
      * @return string
      */
-    public function openLi(array $li, $extra = '', $current_id, $hasChild = false)
+    public function openLi(array $li, $extra = '', $current_id, $hasChild = false, $isActive = false)
     {
         $extra = $this->convertExtraAttrs($extra);
         $html =  "\n".'<li ';
@@ -1062,13 +1069,14 @@ class NestableService
         $html .= '>';
         if (!is_null($li['href'])) {
             $child_extra = $hasChild ? 'data-bs-target="#menu_'. $li['id'] .'" data-bs-toggle="collapse" aria-expanded="false"' : '';
-            $child_class = $hasChild ? ' collapsed' : '';
+            $child_class = $hasChild && !$isActive ? ' collapsed' : '';
+            $child_class .= $isActive ? ' active ' : '';
 
             $html .= '<a href="' . $li['href'] . '" class="' . $this->config['menu']['classes']['link'] . $child_class . '" '. $child_extra .'>' . $li['icon'];
-            $html .= '<span class="align-middle">'. $li['label'] .'</span>';
+            $html .= '<span>'. $li['label'] .'</span>';
             $html .= '</a>';
         } else {
-            $html .= $li['label'];
+            $html .= '<span>' . $li['label'] . '</span>';
         }
         return $html;
     }
