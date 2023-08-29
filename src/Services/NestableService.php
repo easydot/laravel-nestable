@@ -401,16 +401,11 @@ class NestableService
                 // Check the active item
                 $isSubActive = $hasChild ? $this->isSubActive($path) : false;
                 $isActive = $isSubActive ? true : (bool) $this->doActive($path, $label);
-                $classes = [];
+                $classes = $child_item['classes'];
                 array_push($classes, $this->config['menu']['classes']['li']);
-                if (is_array($child_item['classes'])) {
-                    array_push($classes, $child_item['classes']);
-                }
-//                array_push($classes, $isActive);
                 if ($hasChild) {
                     array_push($classes, 'dropdown');
                 }
-
 
                 $extra = ['class' => implode(' ', $classes)];
                 // open the li tag
