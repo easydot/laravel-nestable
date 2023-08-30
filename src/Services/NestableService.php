@@ -393,7 +393,7 @@ class NestableService
         $args['data']->each(function ($child_item) use (&$tree, $args) {
 
             $childItems = '';
-            $permissions = $child_item->permissions;
+            $permissions = $child_item->permissions ?: [] ;
 
             $granted = (
                 $this->user
