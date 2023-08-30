@@ -2,8 +2,10 @@
 
 namespace Nestable\Services;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as Collect;
+use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 use Nestable\MacrosTrait;
 use Closure;
@@ -136,6 +138,12 @@ class NestableService
      * @var mixed
      */
     protected $is_admin = false;
+
+    /**
+     * Set user
+     * @var mixed
+     */
+    protected $user;
 
     /**
      * Set the data to wrap class.
@@ -357,6 +365,12 @@ class NestableService
         return $this;
     }
 
+    public function setUser($user)
+    {
+        $this->user = $user;
+        return $this;
+    }
+
     /**
      * Pass to html (ul:li) as nesting.
      *
@@ -379,8 +393,18 @@ class NestableService
         $args['data']->each(function ($child_item) use (&$tree, $args) {
 
             $childItems = '';
+            $permissions = $child_item->permissions;
 
-            if (intval($child_item[$this->parent]) == intval($args['parent']) && $child_item->hide == 0) {
+            $granted = (
+                $this->user
+                && (
+                    $this->user->hasAnyRole($permissions)
+                    || $this->user->hasAnyPermission($permissions)
+                    || $this->user->hasRole('Super Admin')
+                )
+            ) ? true : false;
+
+            if (intval($child_item[$this->parent]) == intval($args['parent']) && $child_item->hide == 0 && $granted) {
                 // Get the primary key name
                 $item_id = $child_item[$this->config['primary_key']];
                 $hasChild = $this->hasChild($this->parent, $item_id, $args['data']);
