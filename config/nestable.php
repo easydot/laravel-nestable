@@ -4,11 +4,17 @@ return [
     'parent'=> 'parent_id',
     'primary_key' => 'id',
     'generate_url'   => true,
-    'childNode' => 'child',
+    'childNode' => 'children',
+    'can_move_to_children' => true,
     'body' => [
         'id',
-        'name',
-        'url',
+        'text',
+        'parent',
+    ],
+    'jstree' => [
+        'id',
+        'text',
+        'state',
     ],
     'html' => [
         'label' => 'name',

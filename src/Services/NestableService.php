@@ -522,7 +522,7 @@ class NestableService
         }
         $tree = collect([]);
 
-        $args['data']->each(function ($item) use (&$tree, $args) {
+        $args['data']->each(function ($item) use (&$tree, $args, $parent) {
 
             $currentData = collect([]);
 
@@ -535,14 +535,16 @@ class NestableService
                 if ($this->jstree) {
                     $jstree = [];
                     $current_id = $item['id'];
+
                     if (in_array($current_id, $this->parent_categories)) {
                         $jstree['opened'] = true;
                     }
                     if ($this->parent_categories) {
-                        if ($current_id == $this->category?->parent_id) {
+
+                        if ($current_id == $this->category->parent_id) {
                             $jstree['selected'] = true;
                         }
-                        if ($current_id == $this->category?->id) {
+                        if (($current_id == $this->category->id) || ($parent == $this->category->id && !$this->config['can_move_to_children'])) {
                             $jstree['disabled'] = true;
                         }
                     }
