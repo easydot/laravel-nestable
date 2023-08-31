@@ -145,6 +145,13 @@ class NestableService
      */
     protected $user;
 
+
+    /**
+     * Set category_id
+     * @var mixed
+     */
+    protected $category_id;
+
     /**
      * Set the data to wrap class.
      *
@@ -220,7 +227,19 @@ class NestableService
             if (intval($item[$this->parent]) == intval($args['parent'])) {
                 // fill the array with the body fields
                 foreach ($this->config['body'] as $field) {
-                    $currentData->put($field, isset($item[$field]) ? $item[$field] : $this->getRelatedField($field, $item['id']));
+                    switch ($field) {
+                        case 'text':
+                            $currentData->put($field, $item['name']);
+                            break;
+
+                        case 'parent':
+                            $currentData->put($field, $item['parent_id']);
+                            break;
+
+                        default:
+                            $currentData->put($field, isset($item[$field]) ? $item[$field] : $this->getRelatedField($field, $item['id']));
+                    }
+//                    $currentData->put($field, isset($item[$field]) ? $item[$field] : $this->getRelatedField($field, $item['id']));
                 }
 
                 // Get the child node name
@@ -301,7 +320,7 @@ class NestableService
     {
         $args = $this->setParameters(func_get_args());
         if ($this->jstree) {
-            $this->parent_categories = $this->getParentCategories($this->category->id);
+            $this->parent_categories = $this->category instanceof \App\Models\Category ? $this->getParentCategories($this->category->id) : [];
         }
 
         // open the ul tag if function is first run
@@ -316,6 +335,12 @@ class NestableService
                 $path = $url['rewrite'] ?? '';
                 $label = $child_item[$this->config['html']['label']] ?? $child_item['title'];
 
+                $item_id = $child_item[$this->config['primary_key']];
+                $hasChild = $this->hasChild($this->parent, $item_id, $args['data']);
+
+                $isSubActive = $hasChild ? $this->isSubActive($path) : false;
+                $isActive = $isSubActive ? true : (bool) $this->doActive($path, $label);
+
                 // find parent element
                 $parentNode = $args['data']->where('id', (int)$child_item[$this->config['parent']])->first();
 
@@ -329,7 +354,8 @@ class NestableService
                 $activeItem = 'category_id="'. $child_item['id'] .'"';
 
                 // open the li tag
-                $childItems .= $this->openLi($currentData, $activeItem, $child_item['id']);
+                $childItems .= $this->openLi($currentData, $activeItem, $child_item['id'], $hasChild, $isActive);
+//                $childItems .= $this->openLi($currentData, $activeItem, $child_item['id']);
                 // Get the primary key name
                 $item_id = $child_item[$this->config['primary_key']];
 
@@ -481,6 +507,91 @@ class NestableService
     }
 
     /**
+     * Pass to json of all data as nesting for jsTree.
+     *
+     * @param object $data   Illuminate\Support\Collection
+     * @param int    $parent
+     *
+     * @return Recursion|array
+     */
+    public function renderAsJstreeJson($data = false, $parent = 0, $return = 'json')
+    {
+        $args = $this->setParameters(func_get_args());
+        if ($this->jstree) {
+            $this->parent_categories = $this->category instanceof \App\Models\Category ? $this->getParentCategories($this->category->id) : [];
+        }
+        $tree = collect([]);
+
+        $args['data']->each(function ($item) use (&$tree, $args) {
+
+            $currentData = collect([]);
+
+            // Get the primary key name
+            $item_id = $item[$this->config['primary_key']];
+            $hasChild = $this->hasChild($this->parent, $item_id, $args['data']);
+
+            if (intval($item[$this->parent]) == intval($args['parent'])) {
+
+                if ($this->jstree) {
+                    $jstree = [];
+                    $current_id = $item['id'];
+                    if (in_array($current_id, $this->parent_categories)) {
+                        $jstree['opened'] = true;
+                    }
+                    if ($this->parent_categories) {
+                        if ($current_id == $this->category?->parent_id) {
+                            $jstree['selected'] = true;
+                        }
+                        if ($current_id == $this->category?->id) {
+                            $jstree['disabled'] = true;
+                        }
+                    }
+                    if ($current_id == $this->category_id) {
+                        $jstree['selected'] = true;
+                    }
+                    if (!$hasChild) {
+                        $jstree['type'] = 'file';
+                    }
+                    $item['state'] = $jstree;
+                }
+
+                // fill the array with the body fields
+                foreach ($this->config['jstree'] as $field) {
+                    switch ($field) {
+                        case 'text':
+                            $currentData->put($field, $item['name']);
+                            break;
+
+                        case 'parent':
+//                            $currentData->put($field, $item['parent_id']);
+                            break;
+
+                        default:
+                            $currentData->put($field, isset($item[$field]) ? $item[$field] : $this->getRelatedField($field, $item['id']));
+                    }
+                }
+
+
+
+                // Get the child node name
+                $child = $this->config['childNode'];
+
+                // check the child element
+                if ($hasChild) {
+                    // function call again for child elements
+                    $currentData->put($child, $this->renderAsJstreeJson($args['data'], $item_id, $return = 'array'));
+                }
+
+                // current data push to global array
+                $tree->push($currentData->toArray());
+            }
+
+        });
+//        dd($tree);
+        return $return == 'json' ? $tree->toJson() : $tree->toArray();
+    }
+
+    /**
      * Convert to dropdown.
      *
      * @param object $data   Illuminate\Support\Collection
@@ -615,7 +726,7 @@ class NestableService
         $data->each(function ($item) use (&$child, $key, $value) {
 
             if (intval($item[$key]) == intval($value) && !$child) {
-                $child = !(bool) $item->hide;//true;
+                $child = isset($item->hide) ? !(bool) $item->hide : true;
             }
 
         });
@@ -690,6 +801,19 @@ class NestableService
             $this->jstree = true;
         }
 
+        return $this;
+    }
+
+    /**
+     *
+     *  Set the category id to get selected
+     *  on jstree
+     *
+     */
+
+    public function setCategoryId($category_id)
+    {
+        $this->category_id = $category_id;
         return $this;
     }
 
@@ -1034,7 +1158,11 @@ class NestableService
             return "\n".'<ul'.$attrs.'>'."\n";
         }
 
-        return '<div'.$attrs.'><ul class="'. $this->config['menu']['classes']['ul'] .'">'."\n".$items."\n".'</ul></div>';
+        $html = '';
+        $html .= $attrs ? '<div'.$attrs.'>' : '';
+        $html .= '<ul class="'. $this->config['menu']['classes']['ul'] .'">'."\n".$items."\n".'</ul>';
+        $html .= $attrs ?  '</div>' : '';
+        return $html;
     }
 
     /**
@@ -1078,24 +1206,40 @@ class NestableService
         $html .= $extra;
 
         if ($this->jstree) {
-            $html .= " data-jstree='{ ";
-            $html .= in_array($current_id, $this->parent_categories) ? '"opened" : true,' : '';
-            $html .= $current_id == $this->category?->parent_id ? '"selected" : true' : '';
-            $html .= $current_id == $this->category?->id ? '"disabled" : true' : '';
-            $html .= "}' ";
+            $jstree = [];
+            if (in_array($current_id, $this->parent_categories)) {
+                array_push($jstree, '"opened" : true');
+            }
+            if ($this->parent_categories) {
+                if ($current_id == $this->category?->parent_id) {
+                    array_push($jstree, '"selected" : true');
+                }
+                if ($current_id == $this->category?->id) {
+                    array_push($jstree, '"disabled" : true');
+                }
+            }
+            if ($current_id == $this->category_id) {
+                array_push($jstree, '"selected" : true');
+            }
+            if ($hasChild) {
+                array_push($jstree, '"type" : "file"');
+            }
+            $html .= " data-jstree='{" . implode(',', $jstree) . "}' ";
         }
 
         $html .= '>';
+        $label = $this->jstree ? $li['label'] : '<span>'. $li['label'] .'</span>';
         if (!is_null($li['href'])) {
-            $child_extra = $hasChild ? 'data-bs-target="#menu_'. $li['id'] .'" data-bs-toggle="collapse" aria-expanded="false"' : '';
+            $child_extra = $hasChild && !$this->jstree ? 'data-bs-target="#menu_'. $li['id'] .'" data-bs-toggle="collapse" aria-expanded="false"' : '';
             $child_class = $hasChild && !$isActive ? ' collapsed' : '';
             $child_class .= $isActive ? ' active ' : '';
 
-            $html .= '<a href="' . $li['href'] . '" class="' . $this->config['menu']['classes']['link'] . $child_class . '" '. $child_extra .'>' . $li['icon'];
-            $html .= '<span>'. $li['label'] .'</span>';
+            $html .= '<a href="' . $li['href'] . '" class="' . $this->config['menu']['classes']['link'] . $child_class . '" '. $child_extra .'>';
+            $html .= isset($li['icon']) ? $li['icon'] : '';
+            $html .= $label;
             $html .= '</a>';
         } else {
-            $html .= '<span>' . $li['label'] . '</span>';
+            $html .= $label;
         }
         return $html;
     }

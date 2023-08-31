@@ -59,6 +59,13 @@ trait NestableTrait
     public static $toDropdown = 4;
 
     /**
+     * Json string service for JsTree.
+     *
+     * @var int
+     */
+    public static $toJsTreeJson = 5;
+
+    /**
      * Default service number (toArray).
      *
      * @var int
@@ -126,6 +133,8 @@ trait NestableTrait
             $method = 'renderAsHtml';
         } elseif (static::$to === 4) {
             $method = 'renderAsDropdown';
+        } elseif (static::$to === 5) {
+            $method = 'renderAsJstreeJson';
         } else {
             return $this->source;
         }
@@ -167,6 +176,16 @@ trait NestableTrait
     public static function renderAsJson()
     {
         return self::nested(static::$toJson)->get();
+    }
+
+    /**
+     * Render as json string.
+     *
+     * @return array
+     */
+    public static function renderAsJstreeJson()
+    {
+        return self::nested(static::$toJsTreeJson)->get();
     }
 
     /**
