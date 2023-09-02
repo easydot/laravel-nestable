@@ -121,6 +121,12 @@ class NestableService
     protected $category;
 
     /**
+     *  Set the selected categories for matching in li
+     * @var id
+     */
+    protected $categories = [];
+
+    /**
      * Enable jsTree.
      *
      * @var mixed
@@ -548,7 +554,7 @@ class NestableService
                             $jstree['disabled'] = true;
                         }
                     }
-                    if ($current_id == $this->category_id) {
+                    if ($current_id == $this->category_id || in_array($current_id, $this->categories)) {
                         $jstree['selected'] = true;
                     }
                     if (!$hasChild) {
@@ -828,6 +834,23 @@ class NestableService
     {
         $args = func_get_args();
         $this->category = current($args);
+
+        if (func_num_args() > 1) {
+            $this->category = current($args);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the selected category
+     *
+     * @return collection (instance)
+     */
+    public function selectedCategories()
+    {
+        $args = func_get_args();
+        $this->categories = is_array($args) ? $args : [$args];
 
         if (func_num_args() > 1) {
             $this->category = current($args);
