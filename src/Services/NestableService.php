@@ -920,8 +920,14 @@ class NestableService
 
     protected function isSubActive($path)
     {
+
+        $path_segments = explode('/', $path);
         $segments = request()->segments();
-        return (in_array($path, $segments)) ? true : false;
+        unset($segments[array_search('admin', $segments)]);
+        $commonElements = array_intersect($segments, $path_segments);
+        $commonElementCount = count($commonElements);
+
+        return $commonElementCount > 1 ? true : false;
     }
 
     /**
