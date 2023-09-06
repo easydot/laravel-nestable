@@ -502,7 +502,7 @@ class NestableService
 
     protected function getParentCategories($id, $categories = [])
     {
-        $category = \App\Models\Category::find($id);
+        $category = \App\Models\Category::where('id', $id)->withTrashed()->first();
         array_push($categories, $category->id);
         if ($category->parentcategory) {
             $subcategory = $this->getParentCategories($category->parent_id, $categories);
